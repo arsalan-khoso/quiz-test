@@ -2579,12 +2579,14 @@
     "source_page": 62
   }
 ]
-    function shuffleArray(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-    }
+   function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+    shuffleArray(quizData);
+
     quizData.forEach(q => shuffleArray(q.options));
     const state = { idx:0, score:0, answered:new Map() };
     const $ = (s, r=document) => r.querySelector(s);
@@ -2661,7 +2663,14 @@
       }
     }
     function prev(){ if(state.idx>0){ state.idx -= 1; renderQuestion(); } }
-    function reset(){ state.idx = 0; state.score = 0; state.answered.clear(); quizData.forEach(q => shuffleArray(q.options)); renderQuestion(); }
+function reset() {
+  state.idx = 0;
+  state.score = 0;
+  state.answered.clear();
+  shuffleArray(quizData); // shuffle questions
+  quizData.forEach(q => shuffleArray(q.options)); // shuffle answers
+  renderQuestion();
+}
     function loadFromTextarea(){
       const raw = $('#jsonInput').value.trim();
       if(!raw) return;
