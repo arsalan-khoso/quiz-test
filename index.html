@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quiz — One Question Per Page</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#0f172a;
+      --text:#ffffff;
+      --muted:#cbd5e1;
+      --accent:#38bdf8;
+      --correct:#22c55e;
+      --wrong:#ef4444;
+      --border:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0b1220, #0f172a);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--text)}
+    .wrap{min-height:100%;display:flex;flex-direction:column}
+    header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)}
+    header h1{margin:0;font-size:clamp(18px,2.8vw,24px);font-weight:800;color:var(--text)}
+    .pill{padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#0b1220;color:var(--muted);font-size:12px}
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:16px}
+    .card{width:100%;max-width:820px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:clamp(16px,4vw,28px)}
+    .progress{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;color:var(--muted)}
+    .bar{flex:1;height:8px;background:#0b1220;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    .bar > i{display:block;height:100%;background:var(--accent);width:0%}
+    .q{font-size:clamp(18px,3.2vw,26px);line-height:1.35;margin:8px 0 16px 0;color:var(--text)}
+    .options{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:720px){.options{grid-template-columns:1fr 1fr}}
+    .opt{border:1px solid var(--border);padding:14px;border-radius:12px;background:#0b1220;color:#ffffff;cursor:pointer;transition:transform .06s ease, background .2s ease, border-color .2s ease}
+    .opt:hover{transform:translateY(-1px);border-color:#243244}
+    .opt.correct{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.85)}
+    .opt.wrong{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.85)}
+    .meta{margin-top:12px;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:10px}
+    .badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;min-height:26px;padding:2px 8px;border-radius:999px;background:#0b1220;border:1px solid var(--border);font-weight:700;color:var(--text)}
+    .controls{display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+    .btn{cursor:pointer;background:var(--accent);color:#081019;border:none;border-radius:10px;padding:12px 16px;font-weight:800}
+    .btn.secondary{background:#0b1220;color:var(--text);border:1px solid var(--border)}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    details{margin:12px 16px}
+    summary{cursor:pointer;color:var(--muted)}
+    textarea{width:100%;min-height:140px;background:#0b1220;border:1px solid var(--border);border-radius:12px;color:var(--text);padding:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Arsalan Ahmed — Quiz</h1>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="pill"><b id="pos">1</b>/<span id="total">0</span></span>
+        <span class="pill">Score: <b id="score">0</b></span>
+        <button id="reset" class="btn secondary">Reset</button>
+      </div>
+    </header>
+    <details>
+      <div style="padding:0 16px 12px 16px">
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button id="load" class="btn"></button>
+          <small style="color:var(--muted)"></small>
+        </div>
+      </div>
+    </details>
+    <main>
+      <div class="card" id="card">
+        <div class="progress">
+          <span id="section" class="muted"></span>
+          <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+        </div>
+        <div class="q" id="question">Loading…</div>
+        <div class="options" id="options"></div>
+        <div class="meta"><span class="badge" id="pageBadge">?</span> <span id="pageText">Page</span></div>
+        <div class="controls">
+          <button id="prev" class="btn secondary">Previous</button>
+          <button id="next" class="btn" disabled>Next</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    let quizData = [
+  {
+    "question": "What is the largest organ of the human body?",
+    "options": [
+      "Skin",
+      "Liver",
+      "Heart",
+      "Lungs"
+    ],
+    "answer": "Skin",
+    "source_page": 2
+  },
+  {
+    "question": "Which is the smallest bone in the human body?",
+    "options": [
+      "Stapes (ear)",
+      "Hyoid",
+      "Ulna",
+      "Fibula"
+    ],
+    "answer": "Stapes (ear)",
+    "source_page": 2
+  },
+  {
+    "question": "Which is the longest bone in the human body?",
+    "options": [
+      "Femur (thigh)",
+      "Humerus",
+      "Tibia",
+      "Radius"
+    ],
+    "answer": "Femur (thigh)",
+    "source_page": 2
+  },
+  {
+    "question": "Which organ is the largest internal organ?",
+    "options": [
+      "Liver",
+      "Lungs",
+      "Stomach",
+      "Kidney"
+    ],
+    "answer": "Liver",
+    "source_page": 2
+  },
+  {
+    "question": "Which is the hardest substance in the human body?",
+    "options": [
+      "Enamel",
+      "Bone",
+      "Keratin",
+      "Cartilage"
+    ],
+    "answer": "Enamel",
+    "source_page": 2
+  },
+  {
+    "question": "Which joint is the largest in the human body?",
+    "options": [
+      "Knee",
+      "Hip",
+      "Shoulder",
+      "Ankle"
+    ],
+    "answer": "Knee",
+    "source_page": 2
+  },
+  {
+    "question": "Which gland is the smallest?",
+    "options": [
+      "Pineal gland",
+      "Pituitary gland",
+      "Thyroid",
+      "Parathyroid"
+    ],
+    "answer": "Pineal gland",
+    "source_page": 2
+  },
+  {
+    "question": "Which artery is the largest?",
+    "options": [
+      "Aorta",
+      "Femoral artery",
+      "Carotid artery",
+      "Brachial artery"
+    ],
+    "answer": "Aorta",
+    "source_page": 2
+  },
+  {
+    "question": "Which muscle is the largest?",
+    "options": [
+      "Gluteus Maximus",
+      "Quadriceps",
+      "Gastrocnemius",
+      "Latissimus dorsi"
+    ],
+    "answer": "Gluteus Maximus",
+    "source_page": 2
+  },
+  {
+    "question": "Which muscle is the smallest?",
+    "options": [
+      "Stapedius",
+      "Sartorius",
+      "Masseter",
+      "Deltoid"
+    ],
+    "answer": "Stapedius",
+    "source_page": 2
+  },
+  {
+    "question": "Which muscle is the strongest by bite force?",
+    "options": [
+      "Masseter (jaw)",
+      "Biceps brachii",
+      "Gluteus maximus",
+      "Quadriceps"
+    ],
+    "answer": "Masseter (jaw)",
+    "source_page": 2
+  },
+  {
+    "question": "Which vein is the largest?",
+    "options": [
+      "Inferior vena cava",
+      "Superior vena cava",
+      "Femoral vein",
+      "Jugular vein"
+    ],
+    "answer": "Inferior vena cava",
+    "source_page": 2
+  },
+  {
+    "question": "What are the most numerous cells in human blood?",
+    "options": [
+      "Red blood cells",
+      "White blood cells",
+      "Platelets",
+      "Plasma cells"
+    ],
+    "answer": "Red blood cells",
+    "source_page": 2
+  },
+  {
+    "question": "Average lifespan of red blood cells is about:",
+    "options": [
+      "120 days",
+      "30 days",
+      "60 days",
+      "10 days"
+    ],
+    "answer": "120 days",
+    "source_page": 2
+  },
+  {
+    "question": "Average lifespan of white blood cells is:",
+    "options": [
+      "1–5 days",
+      "30–60 days",
+      "120 days",
+      "1 year"
+    ],
+    "answer": "1–5 days",
+    "source_page": 2
+  },
+  {
+    "question": "Which is the largest cell in the human body?",
+    "options": [
+      "Ovum",
+      "Neuron",
+      "Cardiac myocyte",
+      "Hepatocyte"
+    ],
+    "answer": "Ovum",
+    "source_page": 2
+  },
+  {
+    "question": "Which cell is the longest in the human body?",
+    "options": [
+      "Neuron",
+      "Muscle cell",
+      "Epithelial cell",
+      "Osteocyte"
+    ],
+    "answer": "Neuron",
+    "source_page": 2
+  },
+  {
+    "question": "Approximately how many neurons are in the human brain?",
+    "options": [
+      "86 billion",
+      "10 billion",
+      "100 billion",
+      "1 trillion"
+    ],
+    "answer": "86 billion",
+    "source_page": 2
+  },
+  {
+    "question": "Which is the longest river in the world?",
+    "options": [
+      "Nile",
+      "Amazon",
+      "Yangtze",
+      "Mississippi"
+    ],
+    "answer": "Nile",
+    "source_page": 3
+  },
+  {
+    "question": "Which river system is the longest in North America?",
+    "options": [
+      "Mississippi–Missouri",
+      "Colorado",
+      "Yukon",
+      "Rio Grande"
+    ],
+    "answer": "Mississippi–Missouri",
+    "source_page": 3
+  },
+  {
+    "question": "Which is the longest river in Asia?",
+    "options": [
+      "Yangtze",
+      "Yellow",
+      "Mekong",
+      "Ganges"
+    ],
+    "answer": "Yangtze",
+    "source_page": 3
+  },
+  {
+    "question": "Which is the longest river in Europe?",
+    "options": [
+      "Volga",
+      "Danube",
+      "Dnieper",
+      "Rhine"
+    ],
+    "answer": "Volga",
+    "source_page": 3
+  },
+  {
+    "question": "Indus River length in Pakistan (approx.) is:",
+    "options": [
+      "3180 km",
+      "2200 km",
+      "4100 km",
+      "1500 km"
+    ],
+    "answer": "3180 km",
+    "source_page": 3
+  },
+  {
+    "question": "The Indus River originates from which lake?",
+    "options": [
+      "Manasarovar Lake",
+      "Dal Lake",
+      "Pangong Lake",
+      "Wular Lake"
+    ],
+    "answer": "Manasarovar Lake",
+    "source_page": 3
+  },
+  {
+    "question": "Which is the smallest river in the world (USA)?",
+    "options": [
+      "Roe River",
+      "D River",
+      "Shenandoah River",
+      "Link River"
+    ],
+    "answer": "Roe River",
+    "source_page": 3
+  },
+  {
+    "question": "Who proposed the heliocentric model of the Solar System in 1543?",
+    "options": [
+      "Copernicus",
+      "Kepler",
+      "Galileo",
+      "Tycho Brahe"
+    ],
+    "answer": "Copernicus",
+    "source_page": 4
+  },
+  {
+    "question": "Who invented the microscope (1590)?",
+    "options": [
+      "Zacharias Janssen",
+      "Robert Hooke",
+      "Leeuwenhoek",
+      "Galileo"
+    ],
+    "answer": "Zacharias Janssen",
+    "source_page": 4
+  },
+  {
+    "question": "Who invented the telescope (1608)?",
+    "options": [
+      "Hans Lippershey",
+      "Galileo Galilei",
+      "Kepler",
+      "Hooke"
+    ],
+    "answer": "Hans Lippershey",
+    "source_page": 4
+  },
+  {
+    "question": "Who designed the mercury thermometer (1714)?",
+    "options": [
+      "Gabriel Fahrenheit",
+      "Anders Celsius",
+      "Kelvin",
+      "Newton"
+    ],
+    "answer": "Gabriel Fahrenheit",
+    "source_page": 4
+  },
+  {
+    "question": "Who invented the telephone (1876)?",
+    "options": [
+      "Alexander Graham Bell",
+      "Thomas Edison",
+      "Marconi",
+      "Faraday"
+    ],
+    "answer": "Alexander Graham Bell",
+    "source_page": 4
+  },
+  {
+    "question": "Who discovered X-rays (1895)?",
+    "options": [
+      "Wilhelm Roentgen",
+      "Marie Curie",
+      "Niels Bohr",
+      "Max Planck"
+    ],
+    "answer": "Wilhelm Roentgen",
+    "source_page": 4
+  },
+  {
+    "question": "Who achieved the first Moon landing (1969)?",
+    "options": [
+      "NASA Apollo 11",
+      "Luna 2",
+      "Surveyor 1",
+      "Apollo 8"
+    ],
+    "answer": "NASA Apollo 11",
+    "source_page": 4
+  },
+  {
+    "question": "Who invented insulin (1921)?",
+    "options": [
+      "Banting & Best",
+      "Pasteur",
+      "Fleming",
+      "Salk"
+    ],
+    "answer": "Banting & Best",
+    "source_page": 4
+  },
+  {
+    "question": "Who discovered penicillin (1928)?",
+    "options": [
+      "Alexander Fleming",
+      "Robert Koch",
+      "Louis Pasteur",
+      "Edward Jenner"
+    ],
+    "answer": "Alexander Fleming",
+    "source_page": 4
+  },
+  {
+    "question": "When was DNA helix described by Watson & Crick?",
+    "options": [
+      "1953",
+      "1945",
+      "1962",
+      "1970"
+    ],
+    "answer": "1953",
+    "source_page": 4
+  },
+  {
+    "question": "What year did WhatsApp launch?",
+    "options": [
+      "2009",
+      "2007",
+      "2012",
+      "2010"
+    ],
+    "answer": "2009",
+    "source_page": 4
+  },
+  {
+    "question": "ChatGPT (Official) year and org are:",
+    "options": [
+      "2022, OpenAI",
+      "2020, OpenAI",
+      "2021, OpenAI",
+      "2023, OpenAI"
+    ],
+    "answer": "2022, OpenAI",
+    "source_page": 4
+  },
+  {
+    "question": "Vitamin A deficiency causes:",
+    "options": [
+      "Night blindness",
+      "Scurvy",
+      "Rickets",
+      "Beri-beri"
+    ],
+    "answer": "Night blindness",
+    "source_page": 5
+  },
+  {
+    "question": "Vitamin B1 (Thiamine) deficiency causes:",
+    "options": [
+      "Beri-beri",
+      "Pellagra",
+      "Scurvy",
+      "Rickets"
+    ],
+    "answer": "Beri-beri",
+    "source_page": 5
+  },
+  {
+    "question": "Vitamin C deficiency causes:",
+    "options": [
+      "Scurvy",
+      "Night blindness",
+      "Rickets",
+      "Pellagra"
+    ],
+    "answer": "Scurvy",
+    "source_page": 5
+  },
+  {
+    "question": "Vitamin D deficiency results in:",
+    "options": [
+      "Bone softening (rickets)",
+      "Anemia",
+      "Goiter",
+      "Night blindness"
+    ],
+    "answer": "Bone softening (rickets)",
+    "source_page": 5
+  },
+  {
+    "question": "Vitamin E deficiency primarily affects:",
+    "options": [
+      "Nerve damage",
+      "Vision",
+      "Skin pigmentation",
+      "Teeth"
+    ],
+    "answer": "Nerve damage",
+    "source_page": 5
+  },
+  {
+    "question": "Biotin is which vitamin?",
+    "options": [
+      "Vitamin B7",
+      "Vitamin B6",
+      "Vitamin B9",
+      "Vitamin B12"
+    ],
+    "answer": "Vitamin B7",
+    "source_page": 5
+  },
+  {
+    "question": "Which vitamins are fat-soluble?",
+    "options": [
+      "A, D, E, K",
+      "B and C",
+      "A and C",
+      "D and B12"
+    ],
+    "answer": "A, D, E, K",
+    "source_page": 5
+  },
+  {
+    "question": "Which vitamins are water-soluble?",
+    "options": [
+      "B-complex and C",
+      "A and D",
+      "E and K",
+      "A and E"
+    ],
+    "answer": "B-complex and C",
+    "source_page": 5
+  },
+  {
+    "question": "Guava is rich in which vitamin?",
+    "options": [
+      "Vitamin C",
+      "Vitamin A",
+      "Vitamin D",
+      "Vitamin E"
+    ],
+    "answer": "Vitamin C",
+    "source_page": 5
+  },
+  {
+    "question": "Who coined the term 'vitamin'?",
+    "options": [
+      "Casimir Funk",
+      "Edward Jenner",
+      "Szent-Györgyi",
+      "Linus Pauling"
+    ],
+    "answer": "Casimir Funk",
+    "source_page": 5
+  },
+  {
+    "question": "Normal human body temperature is about:",
+    "options": [
+      "98.6°F (37°C)",
+      "97.0°F (36.1°C)",
+      "100.4°F (38°C)",
+      "95°F (35°C)"
+    ],
+    "answer": "98.6°F (37°C)",
+    "source_page": 5
+  },
+  {
+    "question": "Normal blood pressure (average) is:",
+    "options": [
+      "120/80 mmHg",
+      "140/90 mmHg",
+      "110/70 mmHg",
+      "100/60 mmHg"
+    ],
+    "answer": "120/80 mmHg",
+    "source_page": 5
+  },
+  {
+    "question": "Father of Algebra:",
+    "options": [
+      "Al-Khwarizmi",
+      "Euclid",
+      "Pythagoras",
+      "Newton"
+    ],
+    "answer": "Al-Khwarizmi",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Philosophy:",
+    "options": [
+      "Socrates",
+      "Aristotle",
+      "Plato",
+      "Descartes"
+    ],
+    "answer": "Socrates",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Modern Philosophy:",
+    "options": [
+      "Rene Descartes",
+      "Plato",
+      "Socrates",
+      "Kant"
+    ],
+    "answer": "Rene Descartes",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Biology:",
+    "options": [
+      "Aristotle",
+      "Darwin",
+      "Lamarck",
+      "Linnaeus"
+    ],
+    "answer": "Aristotle",
+    "source_page": 6
+  },
+  {
+    "question": "Originator of the term 'Philosophy':",
+    "options": [
+      "Pythagoras",
+      "Plato",
+      "Socrates",
+      "Aristotle"
+    ],
+    "answer": "Pythagoras",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Botany:",
+    "options": [
+      "Theophrastus",
+      "Linnaeus",
+      "Darwin",
+      "Aristotle"
+    ],
+    "answer": "Theophrastus",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Classical Physics:",
+    "options": [
+      "Isaac Newton",
+      "Galileo",
+      "Einstein",
+      "Faraday"
+    ],
+    "answer": "Isaac Newton",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Computer:",
+    "options": [
+      "Charles Babbage",
+      "Turing",
+      "Shannon",
+      "Zuse"
+    ],
+    "answer": "Charles Babbage",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Computer Science:",
+    "options": [
+      "Alan Turing",
+      "Church",
+      "Knuth",
+      "Shannon"
+    ],
+    "answer": "Alan Turing",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Geometry:",
+    "options": [
+      "Euclid",
+      "Archimedes",
+      "Apollonius",
+      "Descartes"
+    ],
+    "answer": "Euclid",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Genetics:",
+    "options": [
+      "Gregor Mendel",
+      "Watson",
+      "Crick",
+      "Morgan"
+    ],
+    "answer": "Gregor Mendel",
+    "source_page": 6
+  },
+  {
+    "question": "Father of History:",
+    "options": [
+      "Herodotus",
+      "Thucydides",
+      "Plutarch",
+      "Tacitus"
+    ],
+    "answer": "Herodotus",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Internet:",
+    "options": [
+      "Vint Cerf",
+      "Tim Berners‑Lee",
+      "Robert Kahn",
+      "Ray Tomlinson"
+    ],
+    "answer": "Vint Cerf",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Medicine:",
+    "options": [
+      "Hippocrates",
+      "Galen",
+      "Harvey",
+      "Pasteur"
+    ],
+    "answer": "Hippocrates",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Modern Medicine:",
+    "options": [
+      "Avicenna (Ibn Sina)",
+      "William Harvey",
+      "Pasteur",
+      "Lister"
+    ],
+    "answer": "Avicenna (Ibn Sina)",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Political Science (ancient):",
+    "options": [
+      "Aristotle",
+      "Plato",
+      "Machiavelli",
+      "Locke"
+    ],
+    "answer": "Aristotle",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Modern Political Science:",
+    "options": [
+      "Machiavelli",
+      "Hobbes",
+      "Locke",
+      "Rousseau"
+    ],
+    "answer": "Machiavelli",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Sindhi Poetry:",
+    "options": [
+      "Qazi Qadan",
+      "Shah Abdul Latif",
+      "Sachal Sarmast",
+      "Bedil"
+    ],
+    "answer": "Qazi Qadan",
+    "source_page": 6
+  },
+  {
+    "question": "Father of Zoology:",
+    "options": [
+      "Aristotle",
+      "Linnaeus",
+      "Cuvier",
+      "Darwin"
+    ],
+    "answer": "Aristotle",
+    "source_page": 6
+  },
+  {
+    "question": "Mount Everest is located primarily in:",
+    "options": [
+      "Nepal/China",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal/China",
+    "source_page": 7
+  },
+  {
+    "question": "K2 is located primarily in:",
+    "options": [
+      "Pakistan",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Pakistan",
+    "source_page": 7
+  },
+  {
+    "question": "Kangchenjunga is located primarily in:",
+    "options": [
+      "Nepal/India",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal/India",
+    "source_page": 7
+  },
+  {
+    "question": "Lhotse is located primarily in:",
+    "options": [
+      "Nepal/China",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal/China",
+    "source_page": 7
+  },
+  {
+    "question": "Makalu is located primarily in:",
+    "options": [
+      "Nepal/China",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal/China",
+    "source_page": 7
+  },
+  {
+    "question": "Cho Oyu is located primarily in:",
+    "options": [
+      "Nepal/China",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal/China",
+    "source_page": 7
+  },
+  {
+    "question": "Dhaulagiri I is located primarily in:",
+    "options": [
+      "Nepal",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal",
+    "source_page": 7
+  },
+  {
+    "question": "Manaslu is located primarily in:",
+    "options": [
+      "Nepal",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal",
+    "source_page": 7
+  },
+  {
+    "question": "Nanga Parbat is located primarily in:",
+    "options": [
+      "Pakistan",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Pakistan",
+    "source_page": 7
+  },
+  {
+    "question": "Annapurna I is located primarily in:",
+    "options": [
+      "Nepal",
+      "India",
+      "Bhutan",
+      "Tibet"
+    ],
+    "answer": "Nepal",
+    "source_page": 7
+  },
+  {
+    "question": "Which mountain ranks #1 globally by height?",
+    "options": [
+      "Mount Everest",
+      "K2",
+      "Kangchenjunga",
+      "Lhotse"
+    ],
+    "answer": "Mount Everest",
+    "source_page": 7
+  },
+  {
+    "question": "Largest coffee producer:",
+    "options": [
+      "Brazil",
+      "Vietnam",
+      "Colombia",
+      "Ethiopia"
+    ],
+    "answer": "Brazil",
+    "source_page": 8
+  },
+  {
+    "question": "Largest natural gas reserves:",
+    "options": [
+      "Russia",
+      "USA",
+      "Qatar",
+      "Iran"
+    ],
+    "answer": "Russia",
+    "source_page": 8
+  },
+  {
+    "question": "Largest wheat producer:",
+    "options": [
+      "China",
+      "India",
+      "USA",
+      "Russia"
+    ],
+    "answer": "China",
+    "source_page": 8
+  },
+  {
+    "question": "Second largest petroleum producer:",
+    "options": [
+      "Saudi Arabia",
+      "USA",
+      "Russia",
+      "China"
+    ],
+    "answer": "Saudi Arabia",
+    "source_page": 8
+  },
+  {
+    "question": "Largest arms exporter:",
+    "options": [
+      "USA",
+      "Russia",
+      "France",
+      "China"
+    ],
+    "answer": "USA",
+    "source_page": 8
+  },
+  {
+    "question": "Largest country by area:",
+    "options": [
+      "Russia",
+      "Canada",
+      "China",
+      "USA"
+    ],
+    "answer": "Russia",
+    "source_page": 9
+  },
+  {
+    "question": "Second largest by area:",
+    "options": [
+      "Canada",
+      "USA",
+      "China",
+      "Brazil"
+    ],
+    "answer": "Canada",
+    "source_page": 9
+  },
+  {
+    "question": "Third largest by area:",
+    "options": [
+      "USA",
+      "China",
+      "Brazil",
+      "Australia"
+    ],
+    "answer": "USA",
+    "source_page": 9
+  },
+  {
+    "question": "Most populous country:",
+    "options": [
+      "India",
+      "China",
+      "USA",
+      "Indonesia"
+    ],
+    "answer": "India",
+    "source_page": 9
+  },
+  {
+    "question": "Second most populous country:",
+    "options": [
+      "China",
+      "India",
+      "USA",
+      "Brazil"
+    ],
+    "answer": "China",
+    "source_page": 9
+  },
+  {
+    "question": "Where is Burj Khalifa located?",
+    "options": [
+      "Dubai, UAE",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Dubai, UAE",
+    "source_page": 11
+  },
+  {
+    "question": "Where is Big Ben located?",
+    "options": [
+      "London, UK",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "London, UK",
+    "source_page": 11
+  },
+  {
+    "question": "Where is Eiffel Tower located?",
+    "options": [
+      "Paris, France",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Paris, France",
+    "source_page": 11
+  },
+  {
+    "question": "Where is Statue of Liberty located?",
+    "options": [
+      "New York, USA",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "New York, USA",
+    "source_page": 12
+  },
+  {
+    "question": "Where is Sistine Chapel located?",
+    "options": [
+      "Vatican City",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Vatican City",
+    "source_page": 12
+  },
+  {
+    "question": "Where is Silicon Valley located?",
+    "options": [
+      "California, USA",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "California, USA",
+    "source_page": 12
+  },
+  {
+    "question": "Where is Great Wall of China located?",
+    "options": [
+      "China",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "China",
+    "source_page": 11
+  },
+  {
+    "question": "Where is CERN located?",
+    "options": [
+      "Geneva, Switzerland",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Geneva, Switzerland",
+    "source_page": 11
+  },
+  {
+    "question": "Where is Kremlin located?",
+    "options": [
+      "Moscow, Russia",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Moscow, Russia",
+    "source_page": 12
+  },
+  {
+    "question": "Where is Taj Mahal located?",
+    "options": [
+      "Agra, India",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Agra, India",
+    "source_page": 12
+  },
+  {
+    "question": "Where is Tiananmen Square located?",
+    "options": [
+      "Beijing, China",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "Beijing, China",
+    "source_page": 12
+  },
+  {
+    "question": "Where is Wall Street located?",
+    "options": [
+      "New York, USA",
+      "Rome, Italy",
+      "Berlin, Germany",
+      "Tokyo, Japan"
+    ],
+    "answer": "New York, USA",
+    "source_page": 12
+  },
+  {
+    "question": "The country/city formerly known as Abyssinia is now:",
+    "options": [
+      "Ethiopia",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Ethiopia",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Ceylon is now:",
+    "options": [
+      "Sri Lanka",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Sri Lanka",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Persia is now:",
+    "options": [
+      "Iran",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Iran",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Formosa is now:",
+    "options": [
+      "Taiwan",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Taiwan",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Burma is now:",
+    "options": [
+      "Myanmar",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Myanmar",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Holland is now:",
+    "options": [
+      "Netherlands",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Netherlands",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Zaire is now:",
+    "options": [
+      "DR Congo",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "DR Congo",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Gold Coast is now:",
+    "options": [
+      "Ghana",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Ghana",
+    "source_page": 14
+  },
+  {
+    "question": "The country/city formerly known as Bombay is now:",
+    "options": [
+      "Mumbai",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Mumbai",
+    "source_page": 15
+  },
+  {
+    "question": "The country/city formerly known as Madras is now:",
+    "options": [
+      "Chennai",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Chennai",
+    "source_page": 15
+  },
+  {
+    "question": "The country/city formerly known as Peking is now:",
+    "options": [
+      "Beijing",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Beijing",
+    "source_page": 15
+  },
+  {
+    "question": "The country/city formerly known as Salisbury is now:",
+    "options": [
+      "Harare",
+      "Kigali",
+      "Dodoma",
+      "Astana"
+    ],
+    "answer": "Harare",
+    "source_page": 15
+  },
+  {
+    "question": "First Governor‑General of Pakistan:",
+    "options": [
+      "Mohammad Ali Jinnah",
+      "Khawaja Nazimuddin",
+      "Ghulam Muhammad",
+      "Iskander Mirza"
+    ],
+    "answer": "Mohammad Ali Jinnah",
+    "source_page": 17
+  },
+  {
+    "question": "First President of Pakistan:",
+    "options": [
+      "Iskander Mirza",
+      "Ayub Khan",
+      "Yahya Khan",
+      "Zulfiqar Ali Bhutto"
+    ],
+    "answer": "Iskander Mirza",
+    "source_page": 18
+  },
+  {
+    "question": "First Prime Minister of Pakistan:",
+    "options": [
+      "Liaquat Ali Khan",
+      "Mohammad Ali Bogra",
+      "Chaudhry Muhammad Ali",
+      "Suhrawardy"
+    ],
+    "answer": "Liaquat Ali Khan",
+    "source_page": 19
+  },
+  {
+    "question": "Which PM had the shortest tenure (13 days)?",
+    "options": [
+      "Nurul Amin",
+      "Shaukat Aziz",
+      "Junejo",
+      "Chundrigar"
+    ],
+    "answer": "Nurul Amin",
+    "source_page": 21
+  },
+  {
+    "question": "Which leader served as President for more than 10 years?",
+    "options": [
+      "Field Marshal Ayub Khan",
+      "Iskander Mirza",
+      "Zia‑ul‑Haq",
+      "Arif Alvi"
+    ],
+    "answer": "Field Marshal Ayub Khan",
+    "source_page": 21
+  },
+  {
+    "question": "Year the UN (UNO) was founded:",
+    "options": [
+      "1945",
+      "1919",
+      "1965",
+      "1950"
+    ],
+    "answer": "1945",
+    "source_page": 23
+  },
+  {
+    "question": "World Bank founded (Bretton Woods):",
+    "options": [
+      "1944",
+      "1945",
+      "1950",
+      "1960"
+    ],
+    "answer": "1944",
+    "source_page": 23
+  },
+  {
+    "question": "UNESCO began in which year (officially)?",
+    "options": [
+      "1945",
+      "1948",
+      "1956",
+      "1950"
+    ],
+    "answer": "1945",
+    "source_page": 23
+  },
+  {
+    "question": "OPEC was founded in:",
+    "options": [
+      "1960",
+      "1973",
+      "1955",
+      "1980"
+    ],
+    "answer": "1960",
+    "source_page": 23
+  },
+  {
+    "question": "WHO headquarters city:",
+    "options": [
+      "Geneva",
+      "New York",
+      "Vienna",
+      "Paris"
+    ],
+    "answer": "Geneva",
+    "source_page": 25
+  },
+  {
+    "question": "UN headquarters city:",
+    "options": [
+      "New York",
+      "Geneva",
+      "Vienna",
+      "Nairobi"
+    ],
+    "answer": "New York",
+    "source_page": 25
+  },
+  {
+    "question": "Pakistan joined SCO in:",
+    "options": [
+      "2017",
+      "1995",
+      "2001",
+      "2006"
+    ],
+    "answer": "2017",
+    "source_page": 25
+  },
+  {
+    "question": "What is the capital of Australia?",
+    "options": [
+      "Canberra",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Canberra",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Australia?",
+    "options": [
+      "Australian Dollar",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Australian Dollar",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Bangladesh?",
+    "options": [
+      "Dhaka",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Dhaka",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Bangladesh?",
+    "options": [
+      "Taka",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Taka",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Brazil?",
+    "options": [
+      "Brasília",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Brasília",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Brazil?",
+    "options": [
+      "Real",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Real",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Canada?",
+    "options": [
+      "Ottawa",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Ottawa",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Canada?",
+    "options": [
+      "Canadian Dollar",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Canadian Dollar",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of China?",
+    "options": [
+      "Beijing",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Beijing",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of China?",
+    "options": [
+      "Yuan (Renminbi)",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Yuan (Renminbi)",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Egypt?",
+    "options": [
+      "Cairo",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Cairo",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Egypt?",
+    "options": [
+      "Egyptian Pound",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Egyptian Pound",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of France?",
+    "options": [
+      "Paris",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Paris",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of France?",
+    "options": [
+      "Euro",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Euro",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Germany?",
+    "options": [
+      "Berlin",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Berlin",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Germany?",
+    "options": [
+      "Euro",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Euro",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of India?",
+    "options": [
+      "New Delhi",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "New Delhi",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of India?",
+    "options": [
+      "Indian Rupee",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Indian Rupee",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Indonesia?",
+    "options": [
+      "Jakarta",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Jakarta",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Indonesia?",
+    "options": [
+      "Rupiah",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Rupiah",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Iran?",
+    "options": [
+      "Tehran",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Tehran",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Iran?",
+    "options": [
+      "Iranian Rial",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Iranian Rial",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Italy?",
+    "options": [
+      "Rome",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Rome",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Italy?",
+    "options": [
+      "Euro",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Euro",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Japan?",
+    "options": [
+      "Tokyo",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Tokyo",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Japan?",
+    "options": [
+      "Yen",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Yen",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Kenya?",
+    "options": [
+      "Nairobi",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Nairobi",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Kenya?",
+    "options": [
+      "Kenyan Shilling",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Kenyan Shilling",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Mexico?",
+    "options": [
+      "Mexico City",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Mexico City",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Mexico?",
+    "options": [
+      "Peso",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Peso",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Nigeria?",
+    "options": [
+      "Abuja",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Abuja",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Nigeria?",
+    "options": [
+      "Naira",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Naira",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Pakistan?",
+    "options": [
+      "Islamabad",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Islamabad",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Pakistan?",
+    "options": [
+      "Pakistani Rupee",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Pakistani Rupee",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Russia?",
+    "options": [
+      "Moscow",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Moscow",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Russia?",
+    "options": [
+      "Ruble",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Ruble",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Saudi Arabia?",
+    "options": [
+      "Riyadh",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Riyadh",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Saudi Arabia?",
+    "options": [
+      "Riyal",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Riyal",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of South Africa?",
+    "options": [
+      "Pretoria (Admin)",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Pretoria (Admin)",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of South Africa?",
+    "options": [
+      "Rand",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Rand",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Spain?",
+    "options": [
+      "Madrid",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Madrid",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Spain?",
+    "options": [
+      "Euro",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Euro",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Switzerland?",
+    "options": [
+      "Bern",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Bern",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Switzerland?",
+    "options": [
+      "Swiss Franc",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Swiss Franc",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Turkey?",
+    "options": [
+      "Ankara",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Ankara",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Turkey?",
+    "options": [
+      "Lira",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Lira",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of United Arab Emirates?",
+    "options": [
+      "Abu Dhabi",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Abu Dhabi",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of United Arab Emirates?",
+    "options": [
+      "Dirham",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Dirham",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of United Kingdom?",
+    "options": [
+      "London",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "London",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of United Kingdom?",
+    "options": [
+      "Pound Sterling",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Pound Sterling",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of United States?",
+    "options": [
+      "Washington, D.C.",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Washington, D.C.",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of United States?",
+    "options": [
+      "US Dollar",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "US Dollar",
+    "source_page": 27
+  },
+  {
+    "question": "What is the capital of Vatican City?",
+    "options": [
+      "Vatican City",
+      "Sydney",
+      "Munich",
+      "Milan"
+    ],
+    "answer": "Vatican City",
+    "source_page": 27
+  },
+  {
+    "question": "What is the currency of Vatican City?",
+    "options": [
+      "Euro",
+      "Euro",
+      "US Dollar",
+      "Yen"
+    ],
+    "answer": "Euro",
+    "source_page": 27
+  },
+  {
+    "question": "Who started the Nobel Prizes?",
+    "options": [
+      "Alfred Nobel",
+      "Einstein",
+      "Curie",
+      "Pauling"
+    ],
+    "answer": "Alfred Nobel",
+    "source_page": 39
+  },
+  {
+    "question": "Nobel Peace Prize is awarded in:",
+    "options": [
+      "Oslo",
+      "Stockholm",
+      "Geneva",
+      "Paris"
+    ],
+    "answer": "Oslo",
+    "source_page": 39
+  },
+  {
+    "question": "Youngest Nobel laureate listed:",
+    "options": [
+      "Malala Yousafzai (17)",
+      "William Lawrence Bragg",
+      "Greta Thunberg",
+      "Nadia Murad"
+    ],
+    "answer": "Malala Yousafzai (17)",
+    "source_page": 39
+  },
+  {
+    "question": "US Presidents who won the Nobel Prize include:",
+    "options": [
+      "Barack Obama",
+      "Ronald Reagan",
+      "George H.W. Bush",
+      "Bill Clinton"
+    ],
+    "answer": "Barack Obama",
+    "source_page": 40
+  },
+  {
+    "question": "Mercury's orbital period equals:",
+    "options": [
+      "88 Earth days",
+      "365 Earth days",
+      "225 Earth days",
+      "687 Earth days"
+    ],
+    "answer": "88 Earth days",
+    "source_page": 41
+  },
+  {
+    "question": "Which planet has the most moons in the chart?",
+    "options": [
+      "Saturn",
+      "Jupiter",
+      "Uranus",
+      "Neptune"
+    ],
+    "answer": "Saturn",
+    "source_page": 41
+  },
+  {
+    "question": "UK Parliament lower house:",
+    "options": [
+      "House of Commons",
+      "House of Lords",
+      "Senate",
+      "Congress"
+    ],
+    "answer": "House of Commons",
+    "source_page": 42
+  },
+  {
+    "question": "Israel Parliament is called:",
+    "options": [
+      "The Knesset",
+      "Diet",
+      "Bundestag",
+      "Cortes Generales"
+    ],
+    "answer": "The Knesset",
+    "source_page": 42
+  },
+  {
+    "question": "Germany Parliament is:",
+    "options": [
+      "Bundestag",
+      "Bundesrat",
+      "Reichstag",
+      "Landtag"
+    ],
+    "answer": "Bundestag",
+    "source_page": 42
+  },
+  {
+    "question": "Treaty of Hudaybiyyah occurred in:",
+    "options": [
+      "6 A.H.",
+      "2 A.H.",
+      "3 A.H.",
+      "8 A.H."
+    ],
+    "answer": "6 A.H.",
+    "source_page": 44
+  },
+  {
+    "question": "Battle of Badr took place in:",
+    "options": [
+      "2 A.H.",
+      "1 A.H.",
+      "3 A.H.",
+      "8 A.H."
+    ],
+    "answer": "2 A.H.",
+    "source_page": 44
+  },
+  {
+    "question": "First Muslim woman Nobel laureate:",
+    "options": [
+      "Shirin Ebadi",
+      "Malala Yousafzai",
+      "Benazir Bhutto",
+      "Fatima al-Fihri"
+    ],
+    "answer": "Shirin Ebadi",
+    "source_page": 45
+  },
+  {
+    "question": "First woman in space:",
+    "options": [
+      "Valentina Tereshkova",
+      "Sally Ride",
+      "Mae Jemison",
+      "Peggy Whitson"
+    ],
+    "answer": "Valentina Tereshkova",
+    "source_page": 45
+  },
+  {
+    "question": "Largest animal on Earth:",
+    "options": [
+      "Blue whale",
+      "African Elephant",
+      "Giraffe",
+      "Colossal squid"
+    ],
+    "answer": "Blue whale",
+    "source_page": 46
+  },
+  {
+    "question": "Largest living bird:",
+    "options": [
+      "Ostrich",
+      "Emu",
+      "Albatross",
+      "Condor"
+    ],
+    "answer": "Ostrich",
+    "source_page": 46
+  },
+  {
+    "question": "Largest library:",
+    "options": [
+      "Library of Congress (USA)",
+      "British Library",
+      "NY Public Library",
+      "National Library of China"
+    ],
+    "answer": "Library of Congress (USA)",
+    "source_page": 46
+  },
+  {
+    "question": "Largest hot desert:",
+    "options": [
+      "Sahara",
+      "Arabian",
+      "Gobi",
+      "Kalahari"
+    ],
+    "answer": "Sahara",
+    "source_page": 60
+  },
+  {
+    "question": "Largest seaport in the world:",
+    "options": [
+      "Port of Shanghai",
+      "Singapore",
+      "Rotterdam",
+      "Busan"
+    ],
+    "answer": "Port of Shanghai",
+    "source_page": 47
+  },
+  {
+    "question": "National airline of France:",
+    "options": [
+      "Air France",
+      "Lufthansa",
+      "KLM",
+      "British Airways"
+    ],
+    "answer": "Air France",
+    "source_page": 48
+  },
+  {
+    "question": "National airline of Pakistan:",
+    "options": [
+      "PIA",
+      "Air India",
+      "JAL",
+      "Qantas"
+    ],
+    "answer": "PIA",
+    "source_page": 48
+  },
+  {
+    "question": "Approximate ocean coverage of Earth's surface:",
+    "options": [
+      "71%",
+      "60%",
+      "50%",
+      "80%"
+    ],
+    "answer": "71%",
+    "source_page": 49
+  },
+  {
+    "question": "Average Earth–Sun distance:",
+    "options": [
+      "~149 million km",
+      "~108 million km",
+      "~57 million km",
+      "~384 thousand km"
+    ],
+    "answer": "~149 million km",
+    "source_page": 49
+  },
+  {
+    "question": "Average surface temperature of Earth:",
+    "options": [
+      "~15°C",
+      "~0°C",
+      "~30°C",
+      "~-5°C"
+    ],
+    "answer": "~15°C",
+    "source_page": 49
+  },
+  {
+    "question": "Continent with the largest land area:",
+    "options": [
+      "Asia",
+      "Africa",
+      "North America",
+      "Europe"
+    ],
+    "answer": "Asia",
+    "source_page": 50
+  },
+  {
+    "question": "Continent with the highest population:",
+    "options": [
+      "Asia",
+      "Africa",
+      "Europe",
+      "South America"
+    ],
+    "answer": "Asia",
+    "source_page": 50
+  },
+  {
+    "question": "Highest point in Africa:",
+    "options": [
+      "Mount Kilimanjaro",
+      "Mount Kenya",
+      "Atlas Mountains",
+      "Ruwenzori"
+    ],
+    "answer": "Mount Kilimanjaro",
+    "source_page": 50
+  },
+  {
+    "question": "Largest island in Asia:",
+    "options": [
+      "Borneo",
+      "Sumatra",
+      "Honshu",
+      "Sri Lanka"
+    ],
+    "answer": "Borneo",
+    "source_page": 51
+  },
+  {
+    "question": "Lowest point in Asia:",
+    "options": [
+      "Dead Sea",
+      "Caspian Sea",
+      "Turpan Depression",
+      "Aral Sea"
+    ],
+    "answer": "Dead Sea",
+    "source_page": 51
+  },
+  {
+    "question": "Highest waterfall in Africa:",
+    "options": [
+      "Tugela Falls",
+      "Victoria Falls",
+      "Kalambo Falls",
+      "Blue Nile Falls"
+    ],
+    "answer": "Tugela Falls",
+    "source_page": 52
+  },
+  {
+    "question": "Largest lake in Africa:",
+    "options": [
+      "Lake Victoria",
+      "Lake Tanganyika",
+      "Lake Malawi",
+      "Lake Albert"
+    ],
+    "answer": "Lake Victoria",
+    "source_page": 52
+  },
+  {
+    "question": "Biggest island in North America:",
+    "options": [
+      "Greenland",
+      "Baffin Island",
+      "Newfoundland",
+      "Cuba"
+    ],
+    "answer": "Greenland",
+    "source_page": 53
+  },
+  {
+    "question": "Largest river in North America:",
+    "options": [
+      "Missouri River",
+      "Mississippi",
+      "Yukon",
+      "Colorado"
+    ],
+    "answer": "Missouri River",
+    "source_page": 53
+  },
+  {
+    "question": "Largest country in South America:",
+    "options": [
+      "Brazil",
+      "Argentina",
+      "Peru",
+      "Colombia"
+    ],
+    "answer": "Brazil",
+    "source_page": 54
+  },
+  {
+    "question": "Coldest region of the world:",
+    "options": [
+      "Antarctica",
+      "Arctic",
+      "Siberia",
+      "Tibet"
+    ],
+    "answer": "Antarctica",
+    "source_page": 55
+  },
+  {
+    "question": "Largest city by population in Europe:",
+    "options": [
+      "Istanbul (partly in Europe)",
+      "Moscow",
+      "London",
+      "Paris"
+    ],
+    "answer": "Istanbul (partly in Europe)",
+    "source_page": 56
+  },
+  {
+    "question": "Largest island in Oceania:",
+    "options": [
+      "Australia (continent/island)",
+      "New Guinea",
+      "Tasmania",
+      "New Zealand"
+    ],
+    "answer": "Australia (continent/island)",
+    "source_page": 57
+  },
+  {
+    "question": "Deepest ocean trench:",
+    "options": [
+      "Mariana Trench",
+      "Tonga Trench",
+      "Kermadec Trench",
+      "Java Trench"
+    ],
+    "answer": "Mariana Trench",
+    "source_page": 58
+  },
+  {
+    "question": "Largest sea by area:",
+    "options": [
+      "Philippine Sea",
+      "Coral Sea",
+      "Caribbean Sea",
+      "Arabian Sea"
+    ],
+    "answer": "Philippine Sea",
+    "source_page": 58
+  },
+  {
+    "question": "World’s largest island (by size):",
+    "options": [
+      "Greenland",
+      "New Guinea",
+      "Borneo",
+      "Madagascar"
+    ],
+    "answer": "Greenland",
+    "source_page": 59
+  },
+  {
+    "question": "Smallest island nation:",
+    "options": [
+      "Nauru",
+      "Tuvalu",
+      "Monaco",
+      "Maldives"
+    ],
+    "answer": "Nauru",
+    "source_page": 59
+  },
+  {
+    "question": "Largest subtropical hot desert:",
+    "options": [
+      "Sahara",
+      "Arabian",
+      "Kalahari",
+      "Thar"
+    ],
+    "answer": "Sahara",
+    "source_page": 60
+  },
+  {
+    "question": "Oldest university still operating:",
+    "options": [
+      "Al‑Qarawiyyin, Morocco",
+      "Bologna",
+      "Oxford",
+      "Al‑Azhar"
+    ],
+    "answer": "Al‑Qarawiyyin, Morocco",
+    "source_page": 61
+  },
+  {
+    "question": "Oldest monarchy (continuous):",
+    "options": [
+      "Japan",
+      "UK",
+      "Denmark",
+      "Morocco"
+    ],
+    "answer": "Japan",
+    "source_page": 61
+  },
+  {
+    "question": "Oldest democracy (ancient):",
+    "options": [
+      "Athens, Greece",
+      "Rome",
+      "Sparta",
+      "Babylon"
+    ],
+    "answer": "Athens, Greece",
+    "source_page": 61
+  },
+  {
+    "question": "Largest lake in the world by area (saltwater):",
+    "options": [
+      "Caspian Sea",
+      "Lake Superior",
+      "Lake Victoria",
+      "Lake Baikal"
+    ],
+    "answer": "Caspian Sea",
+    "source_page": 62
+  },
+  {
+    "question": "Deepest and oldest freshwater lake:",
+    "options": [
+      "Lake Baikal",
+      "Lake Tanganyika",
+      "Crater Lake",
+      "Lake Tahoe"
+    ],
+    "answer": "Lake Baikal",
+    "source_page": 62
+  },
+  {
+    "question": "Largest freshwater lake in Africa by area:",
+    "options": [
+      "Lake Victoria",
+      "Lake Tanganyika",
+      "Lake Malawi",
+      "Lake Chad"
+    ],
+    "answer": "Lake Victoria",
+    "source_page": 62
+  },
+  {
+    "question": "Highest lake in Pakistan:",
+    "options": [
+      "Rush Lake (Gilgit)",
+      "Saif ul Malook",
+      "Sheosar Lake",
+      "Ansoo Lake"
+    ],
+    "answer": "Rush Lake (Gilgit)",
+    "source_page": 62
+  }
+]
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+    quizData.forEach(q => shuffleArray(q.options));
+    const state = { idx:0, score:0, answered:new Map() };
+    const $ = (s, r=document) => r.querySelector(s);
+    const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+    function setHeader(){
+      $('#total').textContent = quizData.length;
+      $('#pos').textContent = state.idx+1;
+      $('#score').textContent = state.score;
+      const pct = ((state.idx) / Math.max(quizData.length-1,1))*100;
+      $('#barFill').style.width = pct + '%';
+    }
+    function clearOptions(){ $('#options').innerHTML = ''; }
+    function renderQuestion(){
+      const q = quizData[state.idx];
+      if(!q) return;
+      $('#question').textContent = `${state.idx+1}. ${q.question}`;
+      $('#pageBadge').textContent = q.source_page || '?';
+      $('#pageText').textContent = 'Page';
+      $('#section').textContent = '';
+      clearOptions();
+      const optionsWrap = $('#options');
+      q.options.slice(0,4).forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'opt';
+        btn.dataset.value = String(opt);
+        btn.textContent = String(opt);
+        btn.addEventListener('click', onOptionClick);
+        optionsWrap.appendChild(btn);
+      });
+      const a = state.answered.get(state.idx);
+      $('#next').disabled = !a;
+      if(a){
+        const {choice, correct} = a;
+        $$('#options .opt').forEach(o => {
+          if(o.dataset.value === correct) o.classList.add('correct');
+          if(o.dataset.value === choice && choice !== correct) o.classList.add('wrong');
+        });
+      }
+      $('#prev').disabled = state.idx === 0;
+      $('#next').textContent = state.idx === quizData.length-1 ? 'Finish' : 'Next';
+      setHeader();
+    }
+    function onOptionClick(e){
+      const btn = e.currentTarget;
+      if($('#next').disabled === false) return;
+      const choice = btn.dataset.value;
+      const correct = quizData[state.idx].answer;
+      if(choice === correct){
+        btn.classList.add('correct');
+        state.score += 1;
+      } else {
+        btn.classList.add('wrong');
+        const corr = $$('#options .opt').find(o=>o.dataset.value===correct);
+        if(corr) corr.classList.add('correct');
+      }
+      state.answered.set(state.idx, {choice, correct});
+      $('#next').disabled = false;
+      setHeader();
+    }
+    function next(){
+      if(state.idx < quizData.length-1){
+        state.idx += 1;
+        renderQuestion();
+      } else {
+        const total = quizData.length;
+        const card = $('#card');
+        card.innerHTML = `<div class="q">Quiz complete! 🎉</div><p style="color:var(--muted);font-size:16px">Your score: <b style=\"color:var(--text)\">${state.score}</b> / ${total}</p><div class="controls"><button class="btn" id="restart">Restart</button></div>`;
+        $('#barFill').style.width = '100%';
+        $('#pos').textContent = total;
+        $('#total').textContent = total;
+        $('#score').textContent = state.score;
+        $('#restart').addEventListener('click', reset);
+      }
+    }
+    function prev(){ if(state.idx>0){ state.idx -= 1; renderQuestion(); } }
+    function reset(){ state.idx = 0; state.score = 0; state.answered.clear(); quizData.forEach(q => shuffleArray(q.options)); renderQuestion(); }
+    function loadFromTextarea(){
+      const raw = $('#jsonInput').value.trim();
+      if(!raw) return;
+      try{
+        const parsed = JSON.parse(raw);
+        if(!Array.isArray(parsed)) throw new Error('JSON must be an array');
+        if(parsed.length===0) throw new Error('Array is empty');
+        for(const item of parsed){
+          if(typeof item.question!== 'string') throw new Error('Each item needs a question string');
+          if(!Array.isArray(item.options) || item.options.length<2) throw new Error('Each item needs an options array (>=2)');
+          if(typeof item.answer!== 'string') throw new Error('Each item needs an answer string');
+        }
+        quizData = parsed;
+        quizData.forEach(q => shuffleArray(q.options));
+        reset();
+        setHeader();
+      }catch(err){
+        alert('Invalid JSON: '+ err.message);
+      }
+    }
+    $('#next').addEventListener('click', next);
+    $('#prev').addEventListener('click', prev);
+    $('#reset').addEventListener('click', reset);
+    $('#load').addEventListener('click', loadFromTextarea);
+    setHeader();
+    renderQuestion();
+  </script>
+</body>
+</html>
